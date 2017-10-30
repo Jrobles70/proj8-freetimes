@@ -20,27 +20,64 @@
           $.getJSON(MAP_URL, {}, function(data){
 
           var POIs = data.result.POIs
-          var center = {lat: parseFloat(POIs[0][1]), lng: parseFloat(POIs[0][2])};
-          var map = new google.maps.Map(document.getElementById('map'), {
-              zoom: 13,
-              center: center
-              });
+          var geocoder = new google.maps.Geocoder;
+          var map;
 
           for(i = 0; i < POIs.length; i++){
             var currPOI = POIs[i];
             var newPoint = {lat: parseFloat(currPOI[1]), lng: parseFloat(currPOI[2])};
+            if (i == 0){
+              map = new google.maps.Map(document.getElementById('map'), {
+              zoom: 13,
+              center: newPoint
+              });
+            }
             var marker = new google.maps.Marker({
+            title: currPOI[0],
             position: newPoint,
             map: map
             });
-            marker.addListener('click', function(evt) {
-          console.log(evt.latLng.lat() + " " + evt.latLng.lng());
-        });
-          } 
 
-        });
+        	google.maps.event.addListener(marker, 'click', function () {
+            	var infowindow = new google.maps.InfoWindow;
+            	currMarker = this;
+            	getAddress(geocoder, map, infowindow, currMarker);
+			}); //end of event listener
 
-      }
+            //marker.addListener('click', function(evt) {
+          	//console.log(evt.latLng.lat() + " " + evt.latLng.lng());
+          	//infowindow.open(map, marker);
+        	//});
+          } //end for loop
+
+        }); // end of getJSON
+
+      } // end of initmap
+
+      function getAddress(geocoder, map, info, marker){
+        var address;
+        geocoder.geocode({"location": marker.position}, function(results, status){
+		if (status === "OK"){
+			address = results[0].formatted_address;
+			console.log(address);
+		} else{
+			address = "No Address found for this marker";
+			console.log(address);
+		}
+
+		}); // end of geocoder
+            	
+ 		var contentString = '<div id="content">'+
+           	'<div id="siteNotice">'+
+           	'</div>'+
+           	'<h1 id="firstHeading" class="firstHeading">' + marker.title + "\n" + address +'</h1>'+
+           	'<div id="bodyContent">'+  
+            '</div>'+
+            '</div>';
+        info.setContent(marker.title + "\n" + address);
+        info.open(map, marker);
+
+      } // end of getAddress
 
       
 
