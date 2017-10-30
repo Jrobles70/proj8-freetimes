@@ -11,6 +11,5 @@
 
 ## Authors
 
-Initial version by M Young;
 Revised by Justin Robles jrobles@uoregon.edu
 
