@@ -1,0 +1,6 @@
+## Lines must follow the following format:
+## 	Description, Latitude, Longitude
+## First line will always be used as the center of the map
+## Other lines will show up as Points of Interest of the map
+Eugene, 44.0521, -123.0868
+University of Oregon, 44.0448, -123.0726
