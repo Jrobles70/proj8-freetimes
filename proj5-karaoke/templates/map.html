@@ -1,87 +1,88 @@
 <!DOCTYPE html>
 <html>
-  <head>
-  <script
-     src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js">
-  </script>
-      <script async defer
-    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCNJo9Fvz10GQfl49DzI2cPfCU5sJJ7egs&callback=initMap">
-    </script>
-    <link rel="stylesheet" type="text/css" href="static/css/map.css">
-    <title>Where's my karaoke?</title>
-  </head>
-  <body>
-    <div id="map"></div>
-    <script>
-      var SCRIPT_ROOT = {{ request.script_root|tojson|safe }} ;
-      var MAP_URL = SCRIPT_ROOT + "/_map";
-
-      function initMap() {
-          $.getJSON(MAP_URL, {}, function(data){
-
-          var POIs = data.result.POIs
-          var geocoder = new google.maps.Geocoder;
-          var map;
-
-          for(i = 0; i < POIs.length; i++){
-            var currPOI = POIs[i];
-            var newPoint = {lat: parseFloat(currPOI[1]), lng: parseFloat(currPOI[2])};
-            if (i == 0){
-              map = new google.maps.Map(document.getElementById('map'), {
-              zoom: 13,
-              center: newPoint
-              });
-            }
-            var marker = new google.maps.Marker({
-            title: currPOI[0],
-            position: newPoint,
-            map: map
-            });
-
-        	google.maps.event.addListener(marker, 'click', function () {
-            	var infowindow = new google.maps.InfoWindow;
-            	currMarker = this;
-            	getAddress(geocoder, map, infowindow, currMarker);
-			}); //end of event listener
-
-            //marker.addListener('click', function(evt) {
-          	//console.log(evt.latLng.lat() + " " + evt.latLng.lng());
-          	//infowindow.open(map, marker);
-        	//});
-          } //end for loop
-
-        }); // end of getJSON
-
-      } // end of initmap
-
-      function getAddress(geocoder, map, info, marker){
-        var address;
-        geocoder.geocode({"location": marker.position}, function(results, status){
-		if (status === "OK"){
-			address = results[0].formatted_address;
-			console.log(address);
-		} else{
-			address = "No Address found for this marker";
-			console.log(address);
-		}
-
-		}); // end of geocoder
-            	
- 		var contentString = '<div id="content">'+
-           	'<div id="siteNotice">'+
-           	'</div>'+
-           	'<h1 id="firstHeading" class="firstHeading">' + marker.title + "\n" + address +'</h1>'+
-           	'<div id="bodyContent">'+  
-            '</div>'+
-            '</div>';
-        info.setContent(marker.title + "\n" + address);
-        info.open(map, marker);
-
-      } // end of getAddress
-
-      
-
-
-    </script>
-  </body>
+	<head>
+		<script
+		src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js">
+		</script>
+		<script async defer
+		src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCNJo9Fvz10GQfl49DzI2cPfCU5sJJ7egs&callback=initMap">
+		</script>
+		<link rel="stylesheet" type="text/css" href="static/css/map.css">
+		<title>Where's my karaoke?</title>
+	</head>
+	<body>
+		<div>
+			<div class="loader" id="loader"></div>
+			<h3  class="loadText" id="loadText">Please wait</h3>
+		</div>
+		<div id="map"></div>
+		<script>
+			var SCRIPT_ROOT = {{ request.script_root|tojson|safe }} ;
+			var MAP_URL = SCRIPT_ROOT + "/_map";
+			
+			function initMap() {
+			    $.getJSON(MAP_URL, {}, function(data) {
+			        var POIs = data.result.POIs
+			        var geocoder = new google.maps.Geocoder;
+			        var infoWindow = new google.maps.InfoWindow;
+			        var waiting = true;
+			        if (navigator.geolocation) {
+			            navigator.geolocation.getCurrentPosition(function(position) {
+			            	document.getElementById("loader").remove();
+			            	document.getElementById("loadText").remove();
+			            	console.log("map loaded");
+			                POIs.push(["Current Location", position.coords.latitude, position.coords.longitude]);
+			                placeMarkers(geocoder, POIs)
+			                //while(position.coords.latitude)
+			            }, function() {
+			                handleLocationError(true, infoWindow, map.getCenter());
+			            });
+			        } else {
+			            // Browser doesn't support Geolocation
+			            handleLocationError(false, infoWindow, map.getCenter());
+			        }
+			
+			    }); // end of getJSON
+			} // end of initmap
+			function placeMarkers(geocoder, POIs) {
+			    for (i = 0; i < POIs.length; i++) {
+			        var currPOI = POIs[i];
+			        console.log(currPOI[0])
+			        var newPoint = {
+			            lat: parseFloat(currPOI[1]),
+			            lng: parseFloat(currPOI[2])
+			        };
+			        if (i == 0) {
+			            var map = new google.maps.Map(document.getElementById('map'), {
+			                zoom: 13,
+			                center: newPoint
+			            });
+			        }
+			        var marker = new google.maps.Marker({
+			            title: currPOI[0],
+			            position: newPoint,
+			            map: map
+			        });
+			        google.maps.event.addListener(marker, 'click', function() {
+			            var infowindow = new google.maps.InfoWindow;
+			            currMarker = this;
+			            getAddress(geocoder, map, infowindow, currMarker);
+			        }); //end of event listener
+			    } //end for loop
+			}
+			
+			function getAddress(geocoder, map, info, marker) {
+			    var address;
+			    geocoder.geocode({
+			        "location": marker.position
+			    }, function(results, status) {
+			        if (status === "OK") {
+			            info.setContent("<div><h2>" + marker.title + "</h2><h3>" + results[0].formatted_address + "</h3> </div>");
+			            info.open(map, marker);
+			        }
+			    }); // end of geocoder
+			} // end of getAddress
+		
+		</script>
+	</body>
 </html>
