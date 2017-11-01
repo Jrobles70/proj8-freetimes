@@ -74,7 +74,6 @@ clean:
 
 veryclean:
 	make clean
-	rm -f CONFIG.py
 	rm -rf env
 	rm -f Makefile.local
 
