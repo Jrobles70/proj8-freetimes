@@ -16,12 +16,13 @@ import logging
 ###
 # Globals
 ###
-app = flask.Flask(__name__)
-import CONFIG
 
 app = flask.Flask(__name__)
-import CONFIG
-app.secret_key = CONFIG.secret_key  # Should allow using session variables
+import config
+CONFIG = config.configuration()
+app.secret_key = CONFIG.SECRET_KEY  # Should allow using session variables
+app.key = CONFIG.KEY
+POI = CONFIG.POI
 
 ###
 # Pages
@@ -31,13 +32,15 @@ app.secret_key = CONFIG.secret_key  # Should allow using session variables
 @app.route("/index")
 def index():
   app.logger.debug("Main page entry")
+  flask.g.api_key = app.key
+  print(flask.g.api_key)
   return flask.render_template('map.html')
 
 
 @app.errorhandler(404)
 def page_not_found(error):
     app.logger.debug("Page not found")
-    flask.session['linkback'] =  flask.url_for("index")
+    flask.session['linkback'] = flask.url_for("index")
     return flask.render_template('page_not_found.html'), 404
 
 
@@ -49,7 +52,7 @@ def page_not_found(error):
 ###############
 @app.route("/_map")
 def _map():
-    f = open("data/poi.txt")
+    f = open(POI)
     result = {"POIs": [],
               }
     for line in f:

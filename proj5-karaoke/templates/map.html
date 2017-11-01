@@ -5,7 +5,7 @@
 		src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js">
 		</script>
 		<script async defer
-		src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCNJo9Fvz10GQfl49DzI2cPfCU5sJJ7egs&callback=initMap">
+		src="https://maps.googleapis.com/maps/api/js?key={{ g.api_key }}&callback=initMap">
 		</script>
 		<link rel="stylesheet" type="text/css" href="static/css/map.css">
 		<title>Where's my karaoke?</title>
@@ -16,24 +16,27 @@
 			<h3  class="loadText" id="loadText">Please wait</h3>
 		</div>
 		<div id="map"></div>
+		<button id="clear">Clear Custom Markers</button>
 		<script>
 			var SCRIPT_ROOT = {{ request.script_root|tojson|safe }} ;
 			var MAP_URL = SCRIPT_ROOT + "/_map";
+			// Holds all markers to be cleared if the user wants to
+			var customMarker = [];
 			
 			function initMap() {
 			    $.getJSON(MAP_URL, {}, function(data) {
+			    	// all points in the text document
 			        var POIs = data.result.POIs
 			        var geocoder = new google.maps.Geocoder;
 			        var infoWindow = new google.maps.InfoWindow;
-			        var waiting = true;
 			        if (navigator.geolocation) {
 			            navigator.geolocation.getCurrentPosition(function(position) {
+			            	// Remove load wheel and text
 			            	document.getElementById("loader").remove();
 			            	document.getElementById("loadText").remove();
-			            	console.log("map loaded");
+			            	// Adds current location pin if allowed to
 			                POIs.push(["Current Location", position.coords.latitude, position.coords.longitude]);
 			                placeMarkers(geocoder, POIs)
-			                //while(position.coords.latitude)
 			            }, function() {
 			                handleLocationError(true, infoWindow, map.getCenter());
 			            });
@@ -44,44 +47,73 @@
 			
 			    }); // end of getJSON
 			} // end of initmap
+
 			function placeMarkers(geocoder, POIs) {
+				// Places a list of marker lat lng
 			    for (i = 0; i < POIs.length; i++) {
 			        var currPOI = POIs[i];
-			        console.log(currPOI[0])
 			        var newPoint = {
 			            lat: parseFloat(currPOI[1]),
 			            lng: parseFloat(currPOI[2])
 			        };
 			        if (i == 0) {
+			        	// if first pin then make it the center of map
 			            var map = new google.maps.Map(document.getElementById('map'), {
 			                zoom: 13,
 			                center: newPoint
-			            });
-			        }
+			            }); // end of map
+			            google.maps.event.addListener(map, 'click', function(event) {
+			            	// add listener to map to make a new marker everytime it is clicked
+   							var newMark = placeMarker(geocoder, "Custom Marker", {lat: event.latLng.lat(), lng: event.latLng.lng()}, map)
+   							customMarker.push(newMark);
+
+						}); // end of event listener
+			        } // end if
+
+			        // makes a marker at the current POI
+			        placeMarker(geocoder, currPOI[0], newPoint, map);
+
+			    } //end for loop
+			} // end of placeMarkers
+
+			function placeMarker(geocoder, desc, point, map){
 			        var marker = new google.maps.Marker({
-			            title: currPOI[0],
-			            position: newPoint,
+			            title: desc,
+			            position: point,
 			            map: map
-			        });
+			        }); // end of marker
+
 			        google.maps.event.addListener(marker, 'click', function() {
+			        	// Adds listener to the markers so an info box opens when it is clicked
 			            var infowindow = new google.maps.InfoWindow;
 			            currMarker = this;
+			            // gets the address of the marker using reverse geolocation
 			            getAddress(geocoder, map, infowindow, currMarker);
-			        }); //end of event listener
-			    } //end for loop
+			        }); //end of event listener		
+			        // Pushes the current marker into the global array to be erased if the user wants to		
+			        return marker;
 			}
 			
 			function getAddress(geocoder, map, info, marker) {
-			    var address;
 			    geocoder.geocode({
 			        "location": marker.position
 			    }, function(results, status) {
 			        if (status === "OK") {
+			        	// sets content to info box with title and address
 			            info.setContent("<div><h2>" + marker.title + "</h2><h3>" + results[0].formatted_address + "</h3> </div>");
 			            info.open(map, marker);
 			        }
 			    }); // end of geocoder
 			} // end of getAddress
+
+			document.getElementById("clear").onclick = function () {
+				// when button is clicked it clears all custom markers
+			 for(i = customMarker.length - 1; i >= 0; i--){
+			 	currMarker = customMarker.pop()
+			 	currMarker.setMap(null);
+			 } 
+
+		};
 		
 		</script>
 	</body>

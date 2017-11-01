@@ -3,4 +3,7 @@
 ## First line will always be used as the center of the map
 ## Other lines will show up as Points of Interest of the map
 Eugene, 44.0521, -123.0868
-University of Oregon, 44.0448, -123.0726
+Level Up Barcade - Karaoke every Tuesday night starting at 9pm, 44.045759, -123.091727
+Black Forest - Karaoke every Monday and Wednesday starting at 9pm, 44.047461, -123.091858
+The Barn Light - Karaoke every Thursday night starting at 9pm, 44.049644, -123.093137
+Mulligan’s Pub - Open Mic every Wednesday and Sunday starting at 9pm, 44.027033, -123.090416

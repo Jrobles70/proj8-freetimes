@@ -10,7 +10,8 @@
   border-left: 16px solid gold;
   width: 120px;
   height: 120px;
-  margin-left: 50%;
+  margin-left: 48%;
+  margin-top: 10%;
   -webkit-animation: spin 2s linear infinite;
   animation: spin 2s linear infinite;
 } .loadText {
