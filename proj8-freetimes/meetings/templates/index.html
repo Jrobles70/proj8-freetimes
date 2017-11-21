@@ -62,6 +62,15 @@
      class="pull-down"
      style="background: #fff; cursor: pointer; padding: 5px 10px;
      border: 1px solid #ccc; width: 12em" >
+  Start: <input type="text" name="start"     
+  {% if session.start is defined %}
+         value="{{session.start}}"
+    {% endif %}>
+  End: <input type="text" name="end"
+      {% if session.end is defined %}
+         value="{{session.end}}"
+    {% endif %}>
+
   <script type="text/javascript">
   $(function() {
   $('input[name="daterange"]').daterangepicker(
@@ -76,11 +85,16 @@
            'Within two weeks':[moment(),moment().add(15, 'days')]
         }}
        );
+
     });
   </script>
 
+
+
 <br /><input type="submit" value="Choose" />
 </form>
+
+
 
     <!--
     Show the calendar list (if we have it).  This will need to be turned into
@@ -94,7 +108,7 @@
           <div class="col-md-4">
 	   {{ cal.summary }}
      {% for event in cal.events %}
-          <div class="event"> {{ event.summary }} </div>
+          <div class="event"> {{ event.summary }} {{ event.readStart }}-{{ event.readEnd }} </div>
      {% endfor %}
           </div>
          {% if loop.index is divisibleby 3 %}

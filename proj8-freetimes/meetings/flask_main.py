@@ -196,10 +196,18 @@ def setrange():
     flask.flash("Setrange gave us '{}'".format(
       request.form.get('daterange')))
     daterange = request.form.get('daterange')
+    start = request.form.get('start')
+    end = request.form.get('end')
+    print("PRINTING START END")
+    print(interpret_time(start),interpret_time(end))
     flask.session['daterange'] = daterange
     daterange_parts = daterange.split()
     flask.session['begin_date'] = interpret_date(daterange_parts[0])
     flask.session['end_date'] = interpret_date(daterange_parts[2])
+    flask.session["begin_time"] = interpret_time(start)
+    flask.session["end_time"] = interpret_time(end)
+    flask.session["start"] = start
+    flask.session["end"] = end
     app.logger.debug("Setrange parsed {} - {}  dates as {} - {}".format(
       daterange_parts[0], daterange_parts[1], 
       flask.session['begin_date'], flask.session['end_date']))
@@ -226,8 +234,6 @@ def init_session_values():
         tomorrow.format("MM/DD/YYYY"),
         nextweek.format("MM/DD/YYYY"))
     # Default time span each day, 8 to 5
-    flask.session["begin_time"] = interpret_time("9am")
-    flask.session["end_time"] = interpret_time("5pm")
 
 def interpret_time( text ):
     """
@@ -325,7 +331,6 @@ def list_calendars(service):
 
 def list_events(service, cal_id):
     page_token = None
-    result = []
     begin = flask.session["begin_date"]
     end = flask.session["end_date"]
     beginTime = flask.session["begin_time"]
@@ -333,18 +338,87 @@ def list_events(service, cal_id):
     min = arrow.get(begin).format('YYYY-MM-DD') + "T" + arrow.get(beginTime).format("HH:mm:ssZZ")
     #The reason I shifted 1 second here is because the max in non inclusive so I moved the time up to include the end
     #Time
-    max = arrow.get(end).format('YYYY-MM-DD') + "T" + arrow.get(endTime).shift(seconds= +1).format("HH:mm:ssZZ")
-
+    max = arrow.get(end).format('YYYY-MM-DD') + "T" + arrow.get(endTime).shift(seconds=+1).format("HH:mm:ssZZ")
+    freeStart = min
+    freeEnd = max
     while True:
-        event_list = service.events().list(calendarId=cal_id, singleEvents=True, orderBy='startTime', pageToken=page_token, timeMin=min, timeMax=max).execute()
-        for event in event_list['items']:
-            result.append(event)
-            if "transparency" not in event:
-                event["transparency"] = 'Busy'
+        event_list = service.events().list(
+                                            calendarId=cal_id,
+                                            singleEvents=True,
+                                            orderBy='startTime',
+                                            pageToken=page_token,
+                                            timeMin=min,
+                                            timeMax=max).execute()
+
+        result = get_next_free_time(min, max, event_list)
+
         page_token = event_list.get('nextPageToken')
         if not page_token:
             break
+
     return result
+
+
+def get_next_free_time(start, end, event_list):
+    # This is probably the worst possible way to do this but I really struggled to get this project finished
+    # This ends up working but only because there are so many conditionals. Definitely not ideal but ill work
+    # with it for now. If you could give me some pointers when you read over this that would be great!!
+    # I annotated this as much as possible so there isnt much confusion on whats going on.
+    start = arrow.get(start)
+    end = arrow.get(end)
+    relStart = start
+    relEnd = arrow.get(arrow.get(start).format('YYYY-MM-DD') + "T" + arrow.get(end).format("HH:mm:ssZZ"))
+    result = []
+
+    for event in event_list['items']:
+        if 'dateTime' not in event['start']:
+            continue
+        eventStart = arrow.get(event['start']['dateTime'])
+        eventEnd = arrow.get(event['end']['dateTime'])
+        if (relStart.format('YYYY-MM-DD')) != (eventStart.format('YYYY-MM-DD')):
+            # If the relative day is not the same and the event day
+            if relStart.format('HH:mm') < end.format('HH:mm'):
+                # If the relative start time is before the end the time the user give
+                result.append(addFreeTime(relStart.format('MM/DD HH:mm'), end.format('HH:mm')))
+            end = end.shift(days=+1)
+            start = start.shift(days=+1)
+            relStart = start
+            relEnd = relEnd.shift(days=+1)
+        if relStart.format('HH:mm') < relEnd.format('HH:mm'):
+            # If the relative start time is before the end time
+            if relStart.isoformat() < eventStart.isoformat():
+                if eventStart.isoformat() < relEnd.isoformat():
+                    # If the relative start time is before the event start
+                    result.append(addFreeTime(relStart.format('MM/DD HH:mm'), eventStart.format('HH:mm')))
+                else:
+                    result.append(addFreeTime(relStart.format('MM/DD HH:mm'), relEnd.format('HH:mm')))
+            elif eventEnd.isoformat() < start.isoformat():
+                # If the event ends before the user given start we dont care
+                continue
+            if eventEnd.format('HH:mm') < relEnd.format('HH:mm'):
+                # If the event ends at the same time or before the user given end time
+                relStart = eventEnd
+            else:
+                # The time ends after the user given end time
+                relStart = relEnd
+
+        event['readStart'] = arrow.get(event['start']['dateTime']).format("MM/DD HH:mm")
+        event['readEnd'] = arrow.get(event['end']['dateTime']).format("HH:mm")
+        if "transparency" not in event:
+            result.append(event)
+
+    return result
+
+
+
+def addFreeTime(start, end):
+    return(
+        {
+            'summary': 'Free time',
+            'readStart': start.format('HH:mm'),
+            'readEnd': end.format('HH:mm')
+        })
+
 
 def cal_sort_key( cal ):
     """
